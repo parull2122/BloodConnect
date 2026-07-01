@@ -1,0 +1,111 @@
+@page "/"
+@using BloodConnect.Models
+@using BloodConnect.Services
+@inject BloodBankService BloodBank
+@implements IDisposable
+@rendermode InteractiveServer
+
+<PageTitle>BloodConnect - Dashboard</PageTitle>
+
+<h1>🩸 BloodConnect Dashboard</h1>
+<p class="text-muted">Live blood requests and real-time donor matching. This page updates instantly - no refresh needed - when a request is raised or a donor responds, even from a different browser tab.</p>
+
+@if (_liveAlert is not null)
+{
+    <div class="alert alert-danger" role="alert">
+        <strong>Live update:</strong> @_liveAlert
+    </div>
+}
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <a href="/create-request" class="btn btn-danger w-100 py-3">+ Raise Blood Request</a>
+    </div>
+    <div class="col-md-6">
+        <a href="/register-donor" class="btn btn-outline-danger w-100 py-3">+ Register as Donor</a>
+    </div>
+</div>
+
+<h3>Active Requests (@_requests.Count)</h3>
+
+@if (_requests.Count == 0)
+{
+    <p class="text-muted">No active requests right now.</p>
+}
+else
+{
+    @foreach (var req in _requests)
+    {
+        var matches = BloodBank.FindMatches(req);
+        <div class="card mb-3 border-danger">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <h5 class="card-title">
+                        @req.PatientName @@ @req.HospitalName
+                        <span class="badge bg-@UrgencyColor(req.Urgency)">@req.Urgency</span>
+                    </h5>
+                    <small class="text-muted">@req.CreatedAt.ToLocalTime().ToString("g")</small>
+                </div>
+                <p class="mb-1">
+                    Needs <strong>@req.UnitsNeeded unit(s)</strong> of
+                    <strong>@req.BloodGroupNeeded.ToLabel()</strong> blood near @req.CityArea
+                </p>
+                <p class="mb-2 text-success"><strong>@matches.Count</strong> compatible donor(s) found nearby:</p>
+                <ul class="list-group">
+                    @foreach (var m in matches)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                @m.Donor.Name (@m.Donor.BloodGroup.ToLabel()) - @m.Donor.CityArea
+                                <span class="text-muted">(@m.DistanceKm.ToString("F1") km away)</span>
+                            </span>
+                            <button class="btn btn-sm btn-success" @onclick="() => Respond(req.Id, m.Donor.Id, true)">
+                                Simulate Accept
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<BloodRequest> _requests = new();
+    private string? _liveAlert;
+
+    protected override void OnInitialized()
+    {
+        RefreshRequests();
+        BloodBank.OnChanged += HandleChanged;
+    }
+
+    private void HandleChanged()
+    {
+        _liveAlert = "Data just changed - dashboard refreshed automatically.";
+        RefreshRequests();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshRequests()
+    {
+        _requests = BloodBank.GetActiveRequests().ToList();
+    }
+
+    private async Task Respond(int requestId, int donorId, bool accepted)
+    {
+        await BloodBank.RespondAsync(requestId, donorId, accepted);
+    }
+
+    private static string UrgencyColor(UrgencyLevel level) => level switch
+    {
+        UrgencyLevel.Critical => "danger",
+        UrgencyLevel.Urgent => "warning",
+        _ => "secondary"
+    };
+
+    public void Dispose()
+    {
+        BloodBank.OnChanged -= HandleChanged;
+    }
+}

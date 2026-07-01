@@ -1,0 +1,77 @@
+@page "/register-donor"
+@using BloodConnect.Models
+@using BloodConnect.Services
+@inject BloodBankService BloodBank
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<PageTitle>Register as Donor</PageTitle>
+
+<h1>Register as a Donor</h1>
+
+<EditForm Model="_donor" OnValidSubmit="HandleSubmit" FormName="registerDonor">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label">Full Name</label>
+        <InputText class="form-control" @bind-Value="_donor.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Phone</label>
+        <InputText class="form-control" @bind-Value="_donor.Phone" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText class="form-control" @bind-Value="_donor.Email" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Blood Group</label>
+        <InputSelect class="form-select" @bind-Value="_donor.BloodGroup">
+            @foreach (var bg in Enum.GetValues<BloodGroup>())
+            {
+                <option value="@bg">@bg.ToLabel()</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">City / Area</label>
+        <InputText class="form-control" @bind-Value="_donor.CityArea" />
+    </div>
+
+    <div class="row mb-3">
+        <div class="col">
+            <label class="form-label">Latitude</label>
+            <InputNumber class="form-control" @bind-Value="_donor.Latitude" />
+        </div>
+        <div class="col">
+            <label class="form-label">Longitude</label>
+            <InputNumber class="form-control" @bind-Value="_donor.Longitude" />
+        </div>
+    </div>
+    <small class="text-muted d-block mb-3">
+        Tip for demo: use coordinates near 22.71-22.77 lat, 75.83-75.92 lon to land near the seeded donors (Indore area).
+    </small>
+
+    <button type="submit" class="btn btn-danger">Register</button>
+</EditForm>
+
+@if (_registered)
+{
+    <div class="alert alert-success mt-3">Thank you, @_donor.Name! You're registered as a donor.</div>
+}
+
+@code {
+    private Donor _donor = new() { IsAvailable = true };
+    private bool _registered = false;
+
+    private void HandleSubmit()
+    {
+        BloodBank.RegisterDonor(_donor);
+        _registered = true;
+        _donor = new Donor { IsAvailable = true };
+    }
+}

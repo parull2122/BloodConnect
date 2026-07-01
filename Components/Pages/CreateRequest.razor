@@ -1,0 +1,95 @@
+@page "/create-request"
+@using BloodConnect.Models
+@using BloodConnect.Services
+@inject BloodBankService BloodBank
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<PageTitle>Raise a Blood Request</PageTitle>
+
+<h1>Raise a Blood Request</h1>
+
+<EditForm Model="_request" OnValidSubmit="HandleSubmit" FormName="createRequest">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label">Patient Name</label>
+        <InputText class="form-control" @bind-Value="_request.PatientName" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Hospital Name</label>
+        <InputText class="form-control" @bind-Value="_request.HospitalName" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Contact Phone</label>
+        <InputText class="form-control" @bind-Value="_request.ContactPhone" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Blood Group Needed</label>
+        <InputSelect class="form-select" @bind-Value="_request.BloodGroupNeeded">
+            @foreach (var bg in Enum.GetValues<BloodGroup>())
+            {
+                <option value="@bg">@bg.ToLabel()</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Units Needed</label>
+        <InputNumber class="form-control" @bind-Value="_request.UnitsNeeded" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Urgency</label>
+        <InputSelect class="form-select" @bind-Value="_request.Urgency">
+            @foreach (var u in Enum.GetValues<UrgencyLevel>())
+            {
+                <option value="@u">@u</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">City / Area</label>
+        <InputText class="form-control" @bind-Value="_request.CityArea" />
+    </div>
+
+    <div class="row mb-3">
+        <div class="col">
+            <label class="form-label">Latitude</label>
+            <InputNumber class="form-control" @bind-Value="_request.Latitude" />
+        </div>
+        <div class="col">
+            <label class="form-label">Longitude</label>
+            <InputNumber class="form-control" @bind-Value="_request.Longitude" />
+        </div>
+    </div>
+    <small class="text-muted d-block mb-3">
+        Tip for demo: use coordinates near 22.71-22.77 lat, 75.83-75.92 lon to land near the seeded donors (Indore area).
+    </small>
+
+    <button type="submit" class="btn btn-danger">Submit Request &amp; Notify Donors</button>
+</EditForm>
+
+@if (_matchCount is not null)
+{
+    <div class="alert alert-info mt-3">
+        Request submitted! <strong>@_matchCount</strong> compatible donor(s) notified in real time.
+        <a href="/">Go to Dashboard</a> to watch it live.
+    </div>
+}
+
+@code {
+    private BloodRequest _request = new() { UnitsNeeded = 1 };
+    private int? _matchCount;
+
+    private async Task HandleSubmit()
+    {
+        var (_, matches) = await BloodBank.CreateRequestAsync(_request);
+        _matchCount = matches.Count;
+        _request = new BloodRequest { UnitsNeeded = 1 };
+    }
+}
